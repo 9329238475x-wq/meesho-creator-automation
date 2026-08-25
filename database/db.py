@@ -23,13 +23,19 @@ class Job(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
-if settings.database_url.startswith("sqlite:///"):
-    db_path = settings.database_url.removeprefix("sqlite:///")
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+# Database is optional. The pipeline can run without persistence until the user
+# chooses SQLite/Postgres/Supabase/etc.
+SessionLocal = None
+engine = None
 
-engine = create_engine(settings.database_url, future=True)
-SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+if settings.database_url:
+    if settings.database_url.startswith("sqlite:///"):
+        db_path = settings.database_url.removeprefix("sqlite:///")
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    engine = create_engine(settings.database_url, future=True)
+    SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def init_db() -> None:
-    Base.metadata.create_all(engine)
+    if engine is not None:
+        Base.metadata.create_all(engine)
