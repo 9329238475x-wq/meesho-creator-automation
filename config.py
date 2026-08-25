@@ -11,7 +11,10 @@ load_dotenv()
 class Settings:
     timezone: str = os.getenv("TIMEZONE", "Asia/Kolkata")
     daily_run_time: str = os.getenv("DAILY_RUN_TIME", "06:00")
-    database_url: str = os.getenv("DATABASE_URL", "sqlite:///data/meesho_automation.db")
+    database_url: str = os.getenv("DATABASE_URL", "")
+
+    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    openai_prompt_model: str = os.getenv("OPENAI_PROMPT_MODEL", "gpt-5.6-luna")
 
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_text_model: str = os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash")
@@ -19,6 +22,7 @@ class Settings:
 
     instagram_access_token: str = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
     instagram_business_account_id: str = os.getenv("INSTAGRAM_BUSINESS_ACCOUNT_ID", "")
+    instagram_graph_version: str = os.getenv("INSTAGRAM_GRAPH_VERSION", "v23.0")
 
     meesho_provider_enabled: bool = os.getenv("MEESHO_PROVIDER_ENABLED", "false").lower() == "true"
     meesho_product_feed_url: str = os.getenv("MEESHO_PRODUCT_FEED_URL", "")
