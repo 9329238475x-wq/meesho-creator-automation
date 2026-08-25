@@ -7,7 +7,8 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from config import settings
 from database.db import SessionLocal, Job, init_db
 from providers.meesho import MeeshoProvider
-from ai.content import build_script, build_video_prompt, build_caption
+from providers.openai import OpenAIProvider
+from ai.prompt_service import PromptService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger(__name__)
@@ -34,22 +35,29 @@ def run_daily_job() -> None:
             log.warning("No eligible product found; stopping cleanly")
             return
 
-        script = build_script(product)
-        prompt = build_video_prompt(product, script)
-        caption = build_caption(product)
+        if not settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY is required for the ChatGPT video-prompt stage")
 
-        with SessionLocal() as session:
-            job = Job(status="content_ready", product_id=product.product_id)
-            session.add(job)
-            session.commit()
-            log.info("Prepared job %s for %s", job.id, product.title)
+        prompt_service = PromptService(OpenAIProvider(settings.openai_api_key, settings.openai_prompt_model))
+        package = prompt_service.create_video_package(product, settings.max_video_seconds)
+        log.info("Generated video package for %s", product.title)
 
-        # Video generation and Instagram publishing are intentionally separate
-        # adapters and will be enabled after their official API credentials are configured.
-        log.info("Prompt ready (%d chars); caption ready (%d chars)", len(prompt), len(caption))
+        # Persistence is optional. If no database is configured, continue without it.
+        if SessionLocal is not None:
+            with SessionLocal() as session:
+                job = Job(status="prompt_ready", product_id=product.product_id)
+                session.add(job)
+                session.commit()
+                log.info("Saved job %s", job.id)
+
+        # The returned package contains the exact video_prompt, voiceover,
+        # negative_prompt and caption that the next video/publishing stages consume.
+        log.info("Video prompt length=%d, voiceover length=%d", len(package["video_prompt"]), len(package["voiceover"]))
+        return package
 
     except Exception as exc:
         log.exception("Daily job failed: %s", exc)
+        return None
 
 
 def start_scheduler() -> None:
