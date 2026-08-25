@@ -10,10 +10,15 @@ class PromptService:
         self.openai = openai_provider
 
     def create_video_package(self, product: Product, max_seconds: int = 10) -> dict:
-        raw = self.openai.generate_text(build_prompt_request(product, max_seconds))
+        raw = self.openai.generate_text(
+            build_prompt_request(product, max_seconds),
+            image_urls=product.image_urls,
+        )
         cleaned = raw.strip()
         if cleaned.startswith("```"):
-            cleaned = cleaned.replace("```json", "", 1).replace("```", "", 1).strip()
+            cleaned = cleaned.removeprefix("```json").removeprefix("```").strip()
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3].strip()
         try:
             data = json.loads(cleaned)
         except json.JSONDecodeError as exc:
